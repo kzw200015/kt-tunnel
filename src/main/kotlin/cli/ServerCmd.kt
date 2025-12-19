@@ -36,6 +36,16 @@ class ServerCmd : Callable<Int> {
     @CommandLine.Option(names = ["--key"], description = ["PEM key file (enable TLS with --cert)"])
     var key: File? = null
 
+    /** 自签证书并启用 TLS（wss）；可选指定证书使用的 host（默认 localhost）。 */
+    @CommandLine.Option(
+        names = ["--self-signed-tls"],
+        arity = "0..1",
+        fallbackValue = "localhost",
+        paramLabel = "HOST",
+        description = ["generate a self-signed cert for HOST and enable TLS (wss)"],
+    )
+    var selfSignedTlsHost: String? = null
+
     /** pending 隧道等待超时（秒）：client OPEN 后等待 agent DATA_BIND 的最大时长。 */
     @CommandLine.Option(
         names = ["--pending-timeout-seconds"],
@@ -50,6 +60,12 @@ class ServerCmd : Callable<Int> {
      * @return 进程退出码（0 表示正常）
      */
     override fun call(): Int {
+        if (selfSignedTlsHost != null && (cert != null || key != null)) {
+            throw CommandLine.ParameterException(
+                CommandLine(this),
+                "--self-signed-tls conflicts with --cert/--key",
+            )
+        }
         ServerApp(
             ServerApp.Config(
                 bindHost = bindHost,
@@ -57,6 +73,7 @@ class ServerCmd : Callable<Int> {
                 token = token,
                 certFile = cert,
                 keyFile = key,
+                selfSignedTlsHost = selfSignedTlsHost,
                 pendingTimeout = Duration.ofSeconds(pendingTimeoutSeconds),
             ),
         ).runUntilShutdown()

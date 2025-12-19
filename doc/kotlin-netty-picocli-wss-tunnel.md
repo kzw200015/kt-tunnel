@@ -49,11 +49,18 @@
 java -jar build/libs/kt-tunnel-*-standalone.jar server   --bind 0.0.0.0 --port 7000   --token TOKEN   --cert server.crt --key server.key
 ```
 
+或使用自签证书快速启用 TLS（wss）：
+```bash
+java -jar build/libs/kt-tunnel-*-standalone.jar server   --bind 0.0.0.0 --port 7000   --token TOKEN   --self-signed-tls SERVER_HOST
+```
+注意：自签证书默认不被信任；client/agent 需要使用 `--insecure`，或将 server 日志里打印的 `cert` 文件路径作为 `--ca` 传入。
+
 参数（与代码一致）：
 - `--bind` 监听地址（默认 0.0.0.0）
 - `--port` 监听端口
 - `--token` 共享密钥（MVP 简化鉴权）
 - `--cert/--key` PEM 格式证书与私钥（两者必须同时提供才启用 TLS/wss）
+- `--self-signed-tls [HOST]` 生成临时自签证书并启用 TLS/wss（默认 HOST=localhost；与 `--cert/--key` 互斥）
 - `--pending-timeout-seconds` pending 超时（默认 10 秒）：client OPEN 后等待 agent DATA_BIND 的最大时长
 
 ### 2.2 agent

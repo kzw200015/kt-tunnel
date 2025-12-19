@@ -8,11 +8,17 @@ import io.netty.channel.nio.NioIoHandler
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.handler.ssl.SslContext
 import io.netty.handler.ssl.SslContextBuilder
+import io.netty.handler.ssl.SslProvider
+import io.netty.pkitesting.CertificateBuilder
 import logger
 import server.handler.WsServerInitializer
 import java.io.File
 import java.net.InetSocketAddress
 import java.time.Duration
+import java.time.Instant
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.Base64
 
 /**
  * Server 端主程序：在公网监听并承载三端 WebSocket endpoint。
@@ -30,16 +36,45 @@ class ServerApp(private val config: Config) {
      *
      * @param certFile PEM 证书文件（可为空）
      * @param keyFile PEM 私钥文件（可为空）
+     * @param selfSignedTlsHost 自签证书使用的 host（可为空）
      * @return 启用 TLS 时返回 SslContext，否则返回 null
      */
-    private fun buildServerSslContext(certFile: File?, keyFile: File?): SslContext? {
+    private fun buildServerSslContext(
+        certFile: File?,
+        keyFile: File?,
+        selfSignedTlsHost: String?,
+    ): Pair<SslContext?, SelfSignedTlsFiles?> {
+        if (selfSignedTlsHost != null) {
+            if (certFile != null || keyFile != null) {
+                throw IllegalArgumentException("--self-signed-tls conflicts with --cert/--key")
+            }
+            val now = Instant.now()
+            val builder = CertificateBuilder()
+            builder.setIsCertificateAuthority(true)
+            builder.subject(if (selfSignedTlsHost.contains("=")) selfSignedTlsHost else "CN=$selfSignedTlsHost")
+            builder.notBefore(now.minusSeconds(60))
+            builder.notAfter(now.plus(Duration.ofDays(3650)))
+            builder.algorithm(CertificateBuilder.Algorithm.ecp256)
+            val bundle = builder.buildSelfSigned()
+
+            val dir = Files.createTempDirectory("kt-tunnel-self-signed-")
+            val files =
+                SelfSignedTlsFiles(
+                    certFile = dir.resolve("server.crt").toFile(),
+                    keyFile = dir.resolve("server.key").toFile(),
+                    dir = dir,
+                )
+            Files.write(files.certFile.toPath(), pem("CERTIFICATE", bundle.certificate.encoded))
+            Files.write(files.keyFile.toPath(), pem("PRIVATE KEY", bundle.keyPair.private.encoded))
+            return SslContextBuilder.forServer(files.certFile, files.keyFile).build() to files
+        }
         if (certFile == null && keyFile == null) {
-            return null
+            return null to null
         }
         if (certFile == null || keyFile == null) {
             throw IllegalArgumentException("both --cert and --key must be provided to enable TLS")
         }
-        return SslContextBuilder.forServer(certFile, keyFile).build()
+        return SslContextBuilder.forServer(certFile, keyFile).build() to null
     }
 
     /**
@@ -48,7 +83,8 @@ class ServerApp(private val config: Config) {
      * 该方法会创建 Netty boss/worker EventLoopGroup，并在 finally 中优雅关闭。
      */
     fun runUntilShutdown() {
-        val sslContext = buildServerSslContext(config.certFile, config.keyFile)
+        val (sslContext, selfSignedTlsFiles) =
+            buildServerSslContext(config.certFile, config.keyFile, config.selfSignedTlsHost)
 
         val agentRegistry = AgentRegistry()
         val tunnelRegistry = TunnelRegistry(config.token, config.pendingTimeout, agentRegistry)
@@ -56,6 +92,14 @@ class ServerApp(private val config: Config) {
         val bossGroup: EventLoopGroup = MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory())
         val workerGroup: EventLoopGroup = MultiThreadIoEventLoopGroup(NioIoHandler.newFactory())
         try {
+            if (selfSignedTlsFiles != null) {
+                log.info(
+                    "self-signed tls enabled: host={}, cert={}, key={}",
+                    config.selfSignedTlsHost,
+                    selfSignedTlsFiles.certFile,
+                    selfSignedTlsFiles.keyFile,
+                )
+            }
             val bootstrap =
                 ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -78,9 +122,28 @@ class ServerApp(private val config: Config) {
             )
             ch.closeFuture().sync()
         } finally {
+            selfSignedTlsFiles?.delete()
             bossGroup.shutdownGracefully()
             workerGroup.shutdownGracefully()
         }
+    }
+
+    private data class SelfSignedTlsFiles(
+        val certFile: File,
+        val keyFile: File,
+        val dir: Path,
+    ) {
+        fun delete() {
+            Files.deleteIfExists(certFile.toPath())
+            Files.deleteIfExists(keyFile.toPath())
+            Files.deleteIfExists(dir)
+        }
+    }
+
+    private fun pem(type: String, der: ByteArray): ByteArray {
+        val base64 = Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(der)
+        val pem = "-----BEGIN $type-----\n$base64\n-----END $type-----\n"
+        return pem.toByteArray(Charsets.US_ASCII)
     }
 
     data class Config(
@@ -94,6 +157,8 @@ class ServerApp(private val config: Config) {
         val certFile: File?,
         /** TLS 私钥文件（PEM，可为空；为空则不启用 TLS）。 */
         val keyFile: File?,
+        /** 自签 TLS host（可为空；不为空则生成自签证书并启用 TLS）。 */
+        val selfSignedTlsHost: String?,
         /** pending 隧道等待超时：client OPEN 后等待 agent DATA_BIND 的最大时长。 */
         val pendingTimeout: Duration,
     )

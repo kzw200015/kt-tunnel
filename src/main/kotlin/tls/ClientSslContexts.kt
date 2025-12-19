@@ -26,6 +26,7 @@ object ClientSslContexts {
         val builder = SslContextBuilder.forClient()
         if (insecure) {
             builder.trustManager(InsecureTrustManagerFactory.INSTANCE)
+            builder.endpointIdentificationAlgorithm(null)
         } else if (caFile != null) {
             builder.trustManager(caFile)
         }

@@ -15,7 +15,10 @@ dependencies {
     val kotlinVersion = "2.2.21"
     implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
     implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
-    implementation("io.netty:netty-all:4.2.7.Final")
+    val nettyVersion = "4.2.7.Final"
+    implementation("io.netty:netty-all:$nettyVersion")
+    implementation("io.netty:netty-pkitesting:$nettyVersion")
+    implementation("org.bouncycastle:bctls-jdk18on:1.83")
     implementation("info.picocli:picocli:4.7.7")
     val fastjsonVersion = "2.0.60"
     implementation("com.alibaba.fastjson2:fastjson2:$fastjsonVersion")
