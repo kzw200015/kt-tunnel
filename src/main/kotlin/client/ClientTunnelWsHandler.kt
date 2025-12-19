@@ -32,7 +32,7 @@ class ClientTunnelWsHandler(private val tunnelContext: ClientTunnelContext) : Si
      */
     override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
         if (evt == WebSocketClientProtocolHandler.ClientHandshakeStateEvent.HANDSHAKE_COMPLETE) {
-            tunnelContext.bindWs(ctx.channel())
+            tunnelContext.wsCh = ctx.channel()
             log.info(
                 "client tunnel ws connected: tunnelId={}, serverRemote={}",
                 tunnelContext.tunnelId,

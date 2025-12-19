@@ -21,37 +21,27 @@ class ClientTunnelContext(
     val token: String,
     /** 转发规则：决定 targetHost/targetPort。 */
     val forward: Forward,
+    /** 隧道 ready 回调（用于首帧确认后的动作）。 */
+    private val onReady: () -> Unit = {},
     /** 隧道关闭后的回调（预留扩展）。 */
-    private val onClose: () -> Unit,
+    private val onClose: () -> Unit = {},
 ) {
     private val log = logger<ClientTunnelContext>()
     private val closed = AtomicBoolean(false)
 
     @Volatile
     var localCh: Channel? = null
-        private set
 
     @Volatile
     var wsCh: Channel? = null
-        private set
 
     @Volatile
     var ready: Boolean = false
-        private set
-
-    /** 绑定本地 TCP channel。 */
-    fun bindLocal(ch: Channel) {
-        localCh = ch
-    }
-
-    /** 绑定 WS channel。 */
-    fun bindWs(ch: Channel) {
-        wsCh = ch
-    }
 
     /** 标记隧道已 ready（已收到 server 的 OK）。 */
     fun markReady() {
         ready = true
+        onReady()
     }
 
     /** 同时关闭本地连接与 WS 连接，并触发清理回调。 */

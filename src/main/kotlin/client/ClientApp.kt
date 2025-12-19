@@ -29,21 +29,22 @@ class ClientApp(private val config: Config) {
     /**
      * 启动并阻塞运行。
      *
-     * 该方法会为每条 [Forward] 规则启动一个本地 listener，并保持进程不退出。
+     * 该方法会为每条 [Forward] / [Socks5Listen] 规则启动一个本地 listener，并保持进程不退出。
      */
     fun runUntilShutdown() {
-        if (config.forwards.isEmpty()) {
-            throw IllegalArgumentException("missing --forward")
+        if (config.forwards.isEmpty() && config.socks5Listens.isEmpty()) {
+            throw IllegalArgumentException("missing --forward or --socks5")
         }
 
         val scheme = if (config.tls) "wss" else "ws"
         val wsUri = URI(scheme, null, config.serverHost, config.serverPort, "/ws/client/tunnel", null, null)
         val sslContext: SslContext? = if (config.tls) ClientSslContexts.build(config.insecure, config.caFile) else null
+        val tunnelConnector = ClientTunnelConnector(wsUri, sslContext, config.token, config.agentId)
 
         val bossGroup: EventLoopGroup = MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory())
         val workerGroup: EventLoopGroup = MultiThreadIoEventLoopGroup(NioIoHandler.newFactory())
 
-        val listenersClosedLatch = CountDownLatch(config.forwards.size)
+        val listenersClosedLatch = CountDownLatch(config.forwards.size + config.socks5Listens.size)
         val channels = ArrayList<Channel>()
         try {
             for (forward in config.forwards) {
@@ -53,7 +54,7 @@ class ClientApp(private val config: Config) {
                         .channel(NioServerSocketChannel::class.java)
                         .childOption(ChannelOption.TCP_NODELAY, true)
                         .childOption(ChannelOption.SO_KEEPALIVE, true)
-                        .childHandler(LocalServerInitializer(wsUri, sslContext, config.token, config.agentId, forward))
+                        .childHandler(LocalServerInitializer(tunnelConnector, forward))
 
                 val channel = b.bind(InetSocketAddress(forward.listenHost, forward.listenPort)).sync().channel()
                 channel.closeFuture().addListener { listenersClosedLatch.countDown() }
@@ -64,6 +65,25 @@ class ClientApp(private val config: Config) {
                     forward.targetHost,
                     forward.targetPort,
                 )
+                channels.add(channel)
+            }
+            for (socks5 in config.socks5Listens) {
+                val b =
+                    ServerBootstrap()
+                        .group(bossGroup, workerGroup)
+                        .channel(NioServerSocketChannel::class.java)
+                        .childOption(ChannelOption.TCP_NODELAY, true)
+                        .childOption(ChannelOption.SO_KEEPALIVE, true)
+                        .childHandler(
+                            Socks5ServerInitializer(
+                                tunnelConnector,
+                                socks5,
+                            ),
+                        )
+
+                val channel = b.bind(InetSocketAddress(socks5.listenHost, socks5.listenPort)).sync().channel()
+                channel.closeFuture().addListener { listenersClosedLatch.countDown() }
+                log.info("socks5 listening on {}:{}", socks5.listenHost, socks5.listenPort)
                 channels.add(channel)
             }
             Runtime.getRuntime().addShutdownHook(
@@ -95,7 +115,9 @@ class ClientApp(private val config: Config) {
         val insecure: Boolean,
         /** 自定义 CA 证书（可为空）。 */
         val caFile: File?,
-        /** 转发规则列表（至少一条）。 */
+        /** 转发规则列表（可为空）。 */
         val forwards: List<Forward>,
+        /** SOCKS5 监听列表（可为空）。 */
+        val socks5Listens: List<Socks5Listen>,
     )
 }

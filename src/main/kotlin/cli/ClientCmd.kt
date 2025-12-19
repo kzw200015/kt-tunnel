@@ -2,6 +2,7 @@ package cli
 
 import client.ClientApp
 import client.Forward
+import client.Socks5Listen
 import picocli.CommandLine
 import java.io.File
 import java.util.concurrent.Callable
@@ -9,13 +10,13 @@ import java.util.concurrent.Callable
 /**
  * `client` 子命令：启动本地 Client。
  *
- * Client 按 `--forward` 规则在本地启动 TCP listener。每 accept 一条本地连接就创建：
+ * Client 按 `--forward` / `--socks5` 规则在本地启动 listener。每 accept 一条本地连接就创建：
  * - 一个新的 `tunnelId(UUID)`
  * - 一条新的 client tunnel WebSocket 连接（`/ws/client/tunnel`）
  *
  * 并在本地 TCP 与 WebSocket 二进制帧之间进行透传。
  */
-@CommandLine.Command(name = "client", mixinStandardHelpOptions = true)
+@CommandLine.Command(name = "kttunnel/clientel/client", mixinStandardHelpOptions = true)
 class ClientCmd : Callable<Int> {
     /** server 的主机名/IP。 */
     @CommandLine.Option(names = ["--server-host"], required = true)
@@ -52,11 +53,22 @@ class ClientCmd : Callable<Int> {
      */
     @CommandLine.Option(
         names = ["--forward"],
-        required = true,
         converter = [ForwardConverter::class],
         description = ["forward rule: <listenPort>:<targetHost>:<targetPort> or <listenHost>:<listenPort>:<targetHost>:<targetPort>"],
     )
-    lateinit var forwards: List<Forward>
+    var forwards: List<Forward> = emptyList()
+
+    /**
+     * SOCKS5 监听列表。
+     *
+     * 每条规则会创建一个本地 SOCKS5 listener：listenHost:listenPort。
+     */
+    @CommandLine.Option(
+        names = ["--socks5"],
+        converter = [Socks5ListenConverter::class],
+        description = ["socks5 listen: <port> or <listenHost>:<port>"],
+    )
+    var socks5Listens: List<Socks5Listen> = emptyList()
 
     /**
      * 执行子命令：构造 [ClientApp] 并阻塞运行。
@@ -74,7 +86,8 @@ class ClientCmd : Callable<Int> {
                 useTls,
                 insecure,
                 caFile,
-                forwards
+                forwards,
+                socks5Listens,
             )
         ).runUntilShutdown()
         return 0
