@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.2.21"
     application
+    id("com.gradleup.shadow") version "9.2.2"
 }
 
 group = "com.github.kzw200015"
@@ -29,6 +30,15 @@ kotlin {
 
 application {
     mainClass.set("MainKt.main")
+}
+
+tasks.shadowJar {
+    archiveClassifier.set("standalone")
+    manifest {
+        attributes["Main-Class"] = application.mainClass.get()
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    mergeServiceFiles()
 }
 
 tasks.test {
