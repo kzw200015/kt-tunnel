@@ -14,7 +14,7 @@ import java.util.concurrent.Callable
  * - `/ws/agent/data`：agent 数据面（每条隧道 1 条连接）
  * - `/ws/client/tunnel`：client 隧道（每条本地连接 1 条隧道/连接）
  */
-@CommandLine.Command(name = "kttunnel/serverel/server", mixinStandardHelpOptions = true)
+@CommandLine.Command(name = "server", mixinStandardHelpOptions = true)
 class ServerCmd : Callable<Int> {
     /** Server 监听地址，默认 `0.0.0.0`。 */
     @CommandLine.Option(names = ["--bind"], defaultValue = "0.0.0.0", description = ["bind host"])

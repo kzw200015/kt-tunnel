@@ -16,7 +16,7 @@ import java.util.concurrent.Callable
  *
  * 并在本地 TCP 与 WebSocket 二进制帧之间进行透传。
  */
-@CommandLine.Command(name = "kttunnel/clientel/client", mixinStandardHelpOptions = true)
+@CommandLine.Command(name = "client", mixinStandardHelpOptions = true)
 class ClientCmd : Callable<Int> {
     /** server 的主机名/IP。 */
     @CommandLine.Option(names = ["--server-host"], required = true)

@@ -15,7 +15,7 @@ import java.util.concurrent.Callable
  *
  * 每条隧道独占一条 data WS 与一条 target TCP（无多路复用）。
  */
-@CommandLine.Command(name = "kttunnel/agentnel/agent", mixinStandardHelpOptions = true)
+@CommandLine.Command(name = "agent", mixinStandardHelpOptions = true)
 class AgentCmd : Callable<Int> {
     /** server 的主机名/IP。 */
     @CommandLine.Option(names = ["--server-host"], required = true)
