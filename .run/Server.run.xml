@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Server" type="JetRunConfigurationType">
+    <option name="MAIN_CLASS_NAME" value="MainKt" />
+    <module name="kt-tunnel.main" />
+    <option name="PROGRAM_PARAMETERS" value="server --bind 0.0.0.0 --port 8000 --token TOKEN --self-signed-tls kttunnel" />
+    <shortenClasspath name="NONE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
