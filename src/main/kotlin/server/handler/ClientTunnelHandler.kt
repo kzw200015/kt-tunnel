@@ -14,12 +14,27 @@ import io.netty.handler.codec.http.websocketx.WebSocketFrame
 import logger
 import server.TunnelRegistry
 
+/**
+ * server 侧 client tunnel handler：处理 `/ws/client/tunnel`。
+ *
+ * client tunnel 的语义：
+ * - 每条本地 TCP 连接对应一条独立的 WS 连接
+ * - 第一帧必须是 Text(JSON)：`CLIENT_TUNNEL_OPEN`
+ * - 此后只转发 BinaryWebSocketFrame，server 不解析 payload
+ */
 class ClientTunnelHandler(private val tunnelRegistry: TunnelRegistry) : SimpleChannelInboundHandler<WebSocketFrame>() {
     private val log = logger<ClientTunnelHandler>()
 
+    /** 是否已成功接收并处理 OPEN（第一帧）。 */
     private var opened = false
+    /** 当前 WS 连接所属的 tunnelId（OPEN 后确定）。 */
     private var tunnelId: String? = null
 
+    /**
+     * 处理来自 client tunnel WS 的帧：
+     * - 第一帧 Text：OPEN
+     * - 后续 Binary：透传到 agent data
+     */
     override fun channelRead0(ctx: ChannelHandlerContext, frame: WebSocketFrame) {
         if (!opened) {
             if (frame !is TextWebSocketFrame) {
@@ -97,6 +112,7 @@ class ClientTunnelHandler(private val tunnelRegistry: TunnelRegistry) : SimpleCh
         log.debug("ignore client tunnel frame: {}", frame::class.java.simpleName)
     }
 
+    /** 读完成：联动 flush 对端，减少尾延迟。 */
     override fun channelReadComplete(ctx: ChannelHandlerContext) {
         val tid = tunnelId
         if (opened && tid != null) {
@@ -108,11 +124,13 @@ class ClientTunnelHandler(private val tunnelRegistry: TunnelRegistry) : SimpleCh
         ctx.flush()
     }
 
+    /** client tunnel 断开：通知 registry 清理并关闭对端（若 active）。 */
     override fun channelInactive(ctx: ChannelHandlerContext) {
         tunnelRegistry.handleClientChannelInactive(ctx.channel())
         log.info("client tunnel ws disconnected: tunnelId={}, remote={}", tunnelId, ctx.channel().remoteAddress())
     }
 
+    /** 异常处理：记录 debug 日志并关闭连接。 */
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         log.debug("client tunnel exception", cause)
         ctx.close()

@@ -14,9 +14,24 @@ import java.io.File
 import java.net.InetSocketAddress
 import java.time.Duration
 
+/**
+ * Server 端主程序：在公网监听并承载三端 WebSocket endpoint。
+ *
+ * Server 的职责：
+ * - 维护在线 agent 的 control 连接（agentId -> Channel）
+ * - 维护隧道状态（pending/active），并负责 client 与 agentData 的配对绑定
+ * - 在两端之间转发 BinaryWebSocketFrame（透明转发，不解析 payload）
+ */
 class ServerApp(private val config: Config) {
     private val log = logger<ServerApp>()
 
+    /**
+     * 按 `--cert/--key` 构造 server 侧 [SslContext]。
+     *
+     * @param certFile PEM 证书文件（可为空）
+     * @param keyFile PEM 私钥文件（可为空）
+     * @return 启用 TLS 时返回 SslContext，否则返回 null
+     */
     private fun buildServerSslContext(certFile: File?, keyFile: File?): SslContext? {
         if (certFile == null && keyFile == null) {
             return null
@@ -27,6 +42,11 @@ class ServerApp(private val config: Config) {
         return SslContextBuilder.forServer(certFile, keyFile).build()
     }
 
+    /**
+     * 启动并阻塞运行，直到 server channel 关闭（或进程被外部终止）。
+     *
+     * 该方法会创建 Netty boss/worker EventLoopGroup，并在 finally 中优雅关闭。
+     */
     fun runUntilShutdown() {
         val sslContext = buildServerSslContext(config.certFile, config.keyFile)
 
@@ -64,11 +84,17 @@ class ServerApp(private val config: Config) {
     }
 
     data class Config(
+        /** 监听地址。 */
         val bindHost: String,
+        /** 监听端口。 */
         val port: Int,
+        /** 共享 token（MVP：静态密钥）。 */
         val token: String,
+        /** TLS 证书文件（PEM，可为空；为空则不启用 TLS）。 */
         val certFile: File?,
+        /** TLS 私钥文件（PEM，可为空；为空则不启用 TLS）。 */
         val keyFile: File?,
+        /** pending 隧道等待超时：client OPEN 后等待 agent DATA_BIND 的最大时长。 */
         val pendingTimeout: Duration,
     )
 }

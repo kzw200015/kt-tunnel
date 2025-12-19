@@ -11,13 +11,30 @@ import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler
 import logger
 
+/**
+ * Agent 端控制面 handler（client 侧）。
+ *
+ * 负责：
+ * - WebSocket 握手完成后发送 `AGENT_REGISTER`
+ * - 处理 server 下发的 `TUNNEL_CREATE` 指令，交给 [AgentTunnelManager] 创建隧道
+ *
+ * 该 handler 仅处理 TextWebSocketFrame（JSON）。
+ */
 class AgentControlClientHandler(
+    /** 当前 agentId（用于注册消息）。 */
     private val agentId: String,
+    /** 共享 token（用于注册消息）。 */
     private val token: String,
+    /** 隧道管理器（收到创建指令时调用）。 */
     private val tunnelManager: AgentTunnelManager,
 ) : SimpleChannelInboundHandler<TextWebSocketFrame>() {
     private val log = logger<AgentControlClientHandler>()
 
+    /**
+     * 处理 WebSocket client 协议事件。
+     *
+     * 这里主要关注握手完成事件（HANDSHAKE_COMPLETE），用于触发注册消息发送。
+     */
     override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
         if (evt == WebSocketClientProtocolHandler.ClientHandshakeStateEvent.HANDSHAKE_COMPLETE) {
             log.info("agent control ws connected: remote={}", ctx.channel().remoteAddress())
@@ -37,6 +54,13 @@ class AgentControlClientHandler(
         }
     }
 
+    /**
+     * 处理来自 server 的控制面消息（Text JSON）。
+     *
+     * 支持消息类型：
+     * - `AGENT_REGISTER_OK`/`AGENT_REGISTER_ERR`
+     * - `TUNNEL_CREATE`
+     */
     override fun channelRead0(ctx: ChannelHandlerContext, frame: TextWebSocketFrame) {
         val obj: JSONObject =
             try {
@@ -58,6 +82,7 @@ class AgentControlClientHandler(
         }
     }
 
+    /** 处理 `TUNNEL_CREATE`：提取 tunnelId/target，并交由 [AgentTunnelManager] 创建隧道。 */
     private fun onTunnelCreate(ctx: ChannelHandlerContext, obj: JSONObject) {
         val tunnelId: String
         val targetHost: String
@@ -74,10 +99,12 @@ class AgentControlClientHandler(
         tunnelManager.startTunnel(ctx.channel(), tunnelId, targetHost, targetPort)
     }
 
+    /** 控制连接断开：记录一条 INFO 日志（重连策略不在本类中实现）。 */
     override fun channelInactive(ctx: ChannelHandlerContext) {
         log.info("agent control ws disconnected: remote={}", ctx.channel().remoteAddress())
     }
 
+    /** 异常处理：记录 debug 日志并关闭连接。 */
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         log.debug("control exception", cause)
         ctx.close()

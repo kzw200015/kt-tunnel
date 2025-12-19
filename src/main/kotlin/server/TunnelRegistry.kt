@@ -15,6 +15,22 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
+/**
+ * server 侧隧道注册表：管理 pending/active 隧道并负责两端绑定与清理。
+ *
+ * 核心数据结构：
+ * - `pending`：client OPEN 已收到，但尚未等到 agent DATA_BIND 的隧道
+ * - `active`：client tunnel WS 与 agent data WS 已完成绑定的隧道
+ *
+ * 严格时序约束：
+ * 1. client 建立 `/ws/client/tunnel` 后第一帧发送 `CLIENT_TUNNEL_OPEN`
+ * 2. server 校验 token/agent 在线后，将该 tunnelId 记为 pending，并向 agent control 下发 `TUNNEL_CREATE`
+ * 3. 只有当 agent 建立 `/ws/agent/data` 并发送 `AGENT_DATA_BIND` 成功后，server 才向 client 返回 `CLIENT_TUNNEL_OK`
+ *
+ * 关闭/清理策略：
+ * - active 隧道：任一侧 channelInactive 都会关闭另一侧并从 `active` 移除
+ * - pending 隧道：等待超时或失败时向 client 发送 ERR 并关闭
+ */
 class TunnelRegistry(
     private val token: String,
     pendingTimeout: Duration?,
@@ -26,10 +42,19 @@ class TunnelRegistry(
     private val pending = ConcurrentHashMap<String, PendingTunnel>()
     private val active = ConcurrentHashMap<String, ActiveTunnel>()
 
+    /** 取消 pending 的超时任务。 */
     private fun cancelTimeout(p: PendingTunnel) {
         p.timeoutTask?.cancel(false)
     }
 
+    /**
+     * 向 client 发送 `CLIENT_TUNNEL_ERR` 并关闭连接。
+     *
+     * @param clientCh client channel
+     * @param tunnelId 隧道 ID
+     * @param code 错误码
+     * @param message 错误原因
+     */
     private fun sendClientErrAndClose(clientCh: Channel?, tunnelId: String, code: Int, message: String) {
         if (clientCh == null) {
             return
@@ -42,6 +67,14 @@ class TunnelRegistry(
             ).addListener { clientCh.close() }
     }
 
+    /**
+     * 向 agent data 发送 `AGENT_DATA_BIND_ERR` 并关闭连接。
+     *
+     * @param agentDataCh agent data channel
+     * @param tunnelId 隧道 ID
+     * @param code 错误码
+     * @param message 错误原因
+     */
     private fun sendAgentDataBindErrAndClose(agentDataCh: Channel, tunnelId: String, code: Int, message: String) {
         agentDataCh
             .writeAndFlush(
@@ -51,8 +84,22 @@ class TunnelRegistry(
             ).addListener { agentDataCh.close() }
     }
 
+    /**
+     * 获取 active 隧道（用于数据面转发）。
+     *
+     * @param tunnelId 隧道 ID
+     * @return active 隧道；不存在则返回 null
+     */
     fun getActive(tunnelId: String): ActiveTunnel? = active[tunnelId]
 
+    /**
+     * 处理 client 的 OPEN 请求。
+     *
+     * 该方法只在 client tunnel handler 收到第一帧 `CLIENT_TUNNEL_OPEN` 后调用。
+     *
+     * @param open OPEN 消息体
+     * @param clientCh client tunnel WS channel
+     */
     fun handleClientOpen(open: Messages.ClientTunnelOpen, clientCh: Channel) {
         log.info(
             "client tunnel open: tunnelId={}, agentId={}, target={}:{}, remote={}",
@@ -167,6 +214,11 @@ class TunnelRegistry(
             }
     }
 
+    /**
+     * 处理 agent 回报的创建失败（control 面）。
+     *
+     * @param err `TUNNEL_CREATE_ERR`
+     */
     fun handleAgentCreateErr(err: Messages.TunnelCreateErr) {
         val p = pending.remove(err.tunnelId) ?: return
         cancelTimeout(p)
@@ -182,6 +234,12 @@ class TunnelRegistry(
         sendClientErrAndClose(p.clientCh, err.tunnelId, err.code, err.message)
     }
 
+    /**
+     * 处理 agent data 的 bind（data 面第一帧，控制消息）。
+     *
+     * @param bind bind 消息体
+     * @param agentDataCh agent data WS channel
+     */
     fun handleAgentDataBind(bind: Messages.AgentDataBind, agentDataCh: Channel) {
         log.info(
             "agent data bind: tunnelId={}, agentId={}, remote={}",
@@ -287,6 +345,11 @@ class TunnelRegistry(
         )
     }
 
+    /**
+     * 在 client tunnel WS channelInactive 时调用，负责清理 pending/active 并关闭对端。
+     *
+     * @param clientCh client tunnel WS channel
+     */
     fun handleClientChannelInactive(clientCh: Channel) {
         val tunnelId = clientCh.attr(ATTR_TUNNEL_ID).get() ?: return
         val a = active.remove(tunnelId)
@@ -312,6 +375,11 @@ class TunnelRegistry(
         }
     }
 
+    /**
+     * 在 agent data WS channelInactive 时调用，负责清理 active 并关闭对端。
+     *
+     * @param agentDataCh agent data WS channel
+     */
     fun handleAgentDataChannelInactive(agentDataCh: Channel) {
         val tunnelId = agentDataCh.attr(ATTR_TUNNEL_ID).get() ?: return
         val a = active.remove(tunnelId)
@@ -327,6 +395,11 @@ class TunnelRegistry(
         }
     }
 
+    /**
+     * pending 超时回调：移除 pending 并向 client 返回 ERR + 关闭。
+     *
+     * @param tunnelId 隧道 ID
+     */
     private fun onPendingTimeout(tunnelId: String) {
         val p = pending.remove(tunnelId) ?: return
         log.info(
@@ -339,20 +412,41 @@ class TunnelRegistry(
         sendClientErrAndClose(p.clientCh, tunnelId, Protocol.CODE_HANDSHAKE_TIMEOUT, Protocol.MSG_HANDSHAKE_TIMEOUT)
     }
 
+    /**
+     * pending 隧道：client OPEN 已收到，等待 agent DATA_BIND 的状态。
+     *
+     * pending 在任一时刻只能存在一个同 tunnelId 记录。
+     */
     data class PendingTunnel(
+        /** tunnelId（UUID 字符串）。 */
         val tunnelId: String,
+        /** agentId：该隧道期望绑定的 agent。 */
         val agentId: String,
+        /** agent 侧要连接的目标主机。 */
         val targetHost: String,
+        /** agent 侧要连接的目标端口。 */
         val targetPort: Int,
+        /** client tunnel WS channel。 */
         val clientCh: Channel,
+        /** pending 超时任务（触发后向 client 返回 HANDSHAKE_TIMEOUT）。 */
         val timeoutTask: ScheduledFuture<*>?,
+        /** pending 创建时间（用于观测/排障）。 */
         val createdAt: Instant,
     )
 
+    /**
+     * 一个 active tunnel 对应两条 WS：
+     * - clientCh：`/ws/client/tunnel`
+     * - agentDataCh：`/ws/agent/data`
+     *
+     * server 只做 binary frame 原样转发，不解析内容。
+     */
     data class ActiveTunnel(val tunnelId: String, val clientCh: Channel, val agentDataCh: Channel)
 
     companion object {
+        /** 绑定在 client/agentData channel 上的属性键：tunnelId。 */
         private val ATTR_TUNNEL_ID: AttributeKey<String> = AttributeKey.valueOf("tunnelId")
+        /** 绑定在 client channel 上的属性键：agentId（用于 debug/清理扩展）。 */
         private val ATTR_AGENT_ID: AttributeKey<String> = AttributeKey.valueOf("agentId")
     }
 }

@@ -15,9 +15,22 @@ import java.net.InetSocketAddress
 import java.net.URI
 import java.util.concurrent.CountDownLatch
 
+/**
+ * Client 端主程序：在本地监听并为每个入站 TCP 连接创建隧道。
+ *
+ * 关键点：
+ * - 每条 [Forward] 规则对应一个本地 TCP listener
+ * - 每 accept 一条本地连接，就创建一条新的 client tunnel WebSocket 连接（无多路复用）
+ * - 控制面严格时序：收到 server 的 `CLIENT_TUNNEL_OK` 后才开始读取/转发本地数据
+ */
 class ClientApp(private val config: Config) {
     private val log = logger<ClientApp>()
 
+    /**
+     * 启动并阻塞运行。
+     *
+     * 该方法会为每条 [Forward] 规则启动一个本地 listener，并保持进程不退出。
+     */
     fun runUntilShutdown() {
         if (config.forwards.isEmpty()) {
             throw IllegalArgumentException("missing --forward")
@@ -68,13 +81,21 @@ class ClientApp(private val config: Config) {
     }
 
     data class Config(
+        /** server 主机名/IP。 */
         val serverHost: String,
+        /** server 端口。 */
         val serverPort: Int,
+        /** 共享 token。 */
         val token: String,
+        /** 目标 agentId（server 用于路由控制连接）。 */
         val agentId: String,
+        /** 是否启用 TLS（wss）。 */
         val tls: Boolean,
+        /** 是否跳过 TLS 校验（不安全，仅开发）。 */
         val insecure: Boolean,
+        /** 自定义 CA 证书（可为空）。 */
         val caFile: File?,
+        /** 转发规则列表（至少一条）。 */
         val forwards: List<Forward>,
     )
 }

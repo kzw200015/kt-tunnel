@@ -14,9 +14,22 @@ import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler
 import logger
 
+/**
+ * Agent 端数据面 handler（client 侧）。
+ *
+ * 职责：
+ * - 握手完成后发送第一帧 `AGENT_DATA_BIND` 将该 data WS 绑定到 tunnelId
+ * - 收到 server 转发来的二进制帧：写入 target TCP
+ * - 任一侧断开：关闭并触发上下文清理
+ */
 class AgentDataClientHandler(private val tunnelContext: TunnelContext) : SimpleChannelInboundHandler<Any>() {
     private val log = logger<AgentDataClientHandler>()
 
+    /**
+     * 处理 WebSocket client 协议事件。
+     *
+     * 在握手完成后会发送第一帧 `AGENT_DATA_BIND` 并打开 target 的 autoRead。
+     */
     override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
         if (evt == WebSocketClientProtocolHandler.ClientHandshakeStateEvent.HANDSHAKE_COMPLETE) {
             log.info(
@@ -46,6 +59,11 @@ class AgentDataClientHandler(private val tunnelContext: TunnelContext) : SimpleC
         }
     }
 
+    /**
+     * 处理 server -> agent 的消息：
+     * - Text：控制面响应（当前仅处理 bind ok/err）
+     * - Binary：透传数据，写回 target TCP
+     */
     override fun channelRead0(ctx: ChannelHandlerContext, msg: Any) {
         if (msg is TextWebSocketFrame) {
             val obj: JSONObject =
@@ -81,6 +99,7 @@ class AgentDataClientHandler(private val tunnelContext: TunnelContext) : SimpleC
         }
     }
 
+    /** 读完成：联动 flush target/WS，尽量降低延迟。 */
     override fun channelReadComplete(ctx: ChannelHandlerContext) {
         val targetCh = tunnelContext.targetCh
         if (targetCh != null) {
@@ -89,10 +108,12 @@ class AgentDataClientHandler(private val tunnelContext: TunnelContext) : SimpleC
         ctx.flush()
     }
 
+    /** WS 断开：关闭隧道两端并清理。 */
     override fun channelInactive(ctx: ChannelHandlerContext) {
         tunnelContext.closeBoth("data_ws_inactive")
     }
 
+    /** 异常处理：记录 debug 日志并关闭连接。 */
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         log.debug("data exception", cause)
         ctx.close()

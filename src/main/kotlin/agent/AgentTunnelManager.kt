@@ -16,17 +16,36 @@ import logger
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Agent 侧隧道管理器：负责创建与维护当前进程内的所有 tunnel。
+ *
+ * 重要约束：
+ * - 不做多路复用：一个 tunnelId 独占一条 target TCP 与一条 data WS
+ * - 隧道的生命周期由任一侧断连驱动清理（target 或 data WS 任一断开则关闭另一侧）
+ */
 class AgentTunnelManager(
+    /** 事件循环组：用于连接 target TCP 和 data WS。 */
     private val group: EventLoopGroup,
+    /** 可选的 TLS 上下文：启用 wss 时用于 data WS。 */
     private val sslContext: SslContext?,
+    /** agent data 的 WebSocket URI（`/ws/agent/data`）。 */
     private val dataUri: URI,
+    /** 当前 agent 的逻辑标识。 */
     private val agentId: String,
+    /** 共享 token。 */
     private val token: String,
 ) {
     private val log = logger<AgentTunnelManager>()
 
+    /** 本地隧道表：tunnelId -> TunnelContext。 */
     private val tunnels = ConcurrentHashMap<String, TunnelContext>()
 
+    /**
+     * 创建一个 tunnel：
+     * 1. 先连接内网 targetHost:targetPort（TCP）
+     * 2. 成功后再连接 `/ws/agent/data`，并发送 `AGENT_DATA_BIND`
+     * 3. 任一侧失败则通过 control 回报 `TUNNEL_CREATE_ERR`
+     */
     fun startTunnel(controlCh: Channel, tunnelId: String, targetHost: String, targetPort: Int) {
         log.info("tunnel start: tunnelId={}, target={}:{}", tunnelId, targetHost, targetPort)
 
