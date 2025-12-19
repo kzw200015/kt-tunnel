@@ -5,6 +5,8 @@ import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame
+import isIgnorableNettyIoException
+import nettyIoExceptionSummary
 import logger
 
 /**
@@ -52,7 +54,12 @@ class TargetToWsRelayHandler(private val tunnelContext: TunnelContext) : Channel
 
     /** 异常处理：记录 debug 日志并关闭连接。 */
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        log.debug("target exception", cause)
+        if (isIgnorableNettyIoException(cause)) {
+            log.debug("target io exception: {}", nettyIoExceptionSummary(cause))
+            ctx.close()
+            return
+        }
+        log.debug("target unexpected exception", cause)
         ctx.close()
     }
 }

@@ -11,6 +11,8 @@ import io.netty.handler.codec.http.HttpResponseStatus
 import io.netty.handler.codec.http.HttpVersion
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolConfig
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler
+import isIgnorableNettyIoException
+import nettyIoExceptionSummary
 import logger
 import server.AgentRegistry
 import server.TunnelRegistry
@@ -88,7 +90,12 @@ class WsPathRouterHandler(
 
     /** 异常处理：记录 debug 日志并关闭连接。 */
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        log.debug("ws router exception", cause)
+        if (isIgnorableNettyIoException(cause)) {
+            log.debug("ws router io exception: {}", nettyIoExceptionSummary(cause))
+            ctx.close()
+            return
+        }
+        log.debug("ws router unexpected exception", cause)
         ctx.close()
     }
 

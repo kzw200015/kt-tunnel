@@ -12,6 +12,8 @@ import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler
+import isIgnorableNettyIoException
+import nettyIoExceptionSummary
 import logger
 
 /**
@@ -115,7 +117,12 @@ class AgentDataClientHandler(private val tunnelContext: TunnelContext) : SimpleC
 
     /** 异常处理：记录 debug 日志并关闭连接。 */
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        log.debug("data exception", cause)
+        if (isIgnorableNettyIoException(cause)) {
+            log.debug("data io exception: {}", nettyIoExceptionSummary(cause))
+            ctx.close()
+            return
+        }
+        log.debug("data unexpected exception", cause)
         ctx.close()
     }
 }

@@ -3,6 +3,8 @@ package client
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.socksx.v5.*
+import isIgnorableNettyIoException
+import nettyIoExceptionSummary
 import logger
 
 /**
@@ -74,5 +76,15 @@ class Socks5ProxyHandler(
             targetPort,
             ctx.channel().remoteAddress(),
         )
+    }
+
+    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+        if (isIgnorableNettyIoException(cause)) {
+            log.debug("socks5 io exception: {}", nettyIoExceptionSummary(cause))
+            ctx.close()
+            return
+        }
+        log.debug("socks5 unexpected exception", cause)
+        ctx.close()
     }
 }

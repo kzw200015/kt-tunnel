@@ -12,6 +12,8 @@ import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler
+import isIgnorableNettyIoException
+import nettyIoExceptionSummary
 import logger
 
 /**
@@ -130,7 +132,12 @@ class ClientTunnelWsHandler(private val tunnelContext: ClientTunnelContext) : Si
 
     /** 异常处理：记录 debug 日志并关闭连接。 */
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        log.debug("client ws exception", cause)
+        if (isIgnorableNettyIoException(cause)) {
+            log.debug("client ws io exception: {}", nettyIoExceptionSummary(cause))
+            ctx.close()
+            return
+        }
+        log.debug("client ws unexpected exception", cause)
         ctx.close()
     }
 }

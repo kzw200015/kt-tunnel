@@ -8,6 +8,8 @@ import common.Protocol
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
+import isIgnorableNettyIoException
+import nettyIoExceptionSummary
 import logger
 import server.AgentRegistry
 import server.TunnelRegistry
@@ -127,7 +129,12 @@ class AgentControlHandler(
 
     /** 异常处理：记录 debug 日志并关闭连接。 */
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        log.debug("agent control exception", cause)
+        if (isIgnorableNettyIoException(cause)) {
+            log.debug("agent control io exception: {}", nettyIoExceptionSummary(cause))
+            ctx.close()
+            return
+        }
+        log.debug("agent control unexpected exception", cause)
         ctx.close()
     }
 }

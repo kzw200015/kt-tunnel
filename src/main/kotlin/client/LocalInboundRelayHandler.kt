@@ -5,6 +5,9 @@ import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame
+import isIgnorableNettyIoException
+import nettyIoExceptionSummary
+import logger
 
 /**
  * 本地 TCP -> client tunnel WS 的数据转发 handler。
@@ -16,6 +19,8 @@ import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame
  */
 class LocalInboundRelayHandler(private val tunnelContext: ClientTunnelContext) :
     SimpleChannelInboundHandler<ByteBuf>() {
+    private val log = logger<LocalInboundRelayHandler>()
+
     /** 收到本地 TCP 入站数据：封装为二进制帧转发给 server。 */
     override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
         if (!tunnelContext.ready) {
@@ -40,5 +45,16 @@ class LocalInboundRelayHandler(private val tunnelContext: ClientTunnelContext) :
     /** 本地连接断开：关闭 WS 并清理。 */
     override fun channelInactive(ctx: ChannelHandlerContext) {
         tunnelContext.closeBoth("local_inactive")
+    }
+
+    /** 异常处理：忽略常见 IO 异常，其他情况记 debug 并关闭连接。 */
+    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+        if (isIgnorableNettyIoException(cause)) {
+            log.debug("local relay io exception: {}", nettyIoExceptionSummary(cause))
+            ctx.close()
+            return
+        }
+        log.debug("local relay unexpected exception", cause)
+        ctx.close()
     }
 }

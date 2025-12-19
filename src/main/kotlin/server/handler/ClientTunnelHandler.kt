@@ -11,6 +11,8 @@ import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import io.netty.handler.codec.http.websocketx.WebSocketFrame
+import isIgnorableNettyIoException
+import nettyIoExceptionSummary
 import logger
 import server.TunnelRegistry
 
@@ -132,7 +134,12 @@ class ClientTunnelHandler(private val tunnelRegistry: TunnelRegistry) : SimpleCh
 
     /** 异常处理：记录 debug 日志并关闭连接。 */
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        log.debug("client tunnel exception", cause)
+        if (isIgnorableNettyIoException(cause)) {
+            log.debug("client tunnel io exception: {}", nettyIoExceptionSummary(cause))
+            ctx.close()
+            return
+        }
+        log.debug("client tunnel unexpected exception", cause)
         ctx.close()
     }
 }
