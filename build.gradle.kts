@@ -29,7 +29,7 @@ kotlin {
 }
 
 application {
-    mainClass.set("MainKt.main")
+    mainClass.set("MainKt")
 }
 
 tasks.shadowJar {
