@@ -15,6 +15,10 @@ repositories {
     mavenCentral()
 }
 
+kotlin {
+    jvmToolchain(8)
+}
+
 dependencies {
     val kotlinVersion = "2.3.0"
     implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
