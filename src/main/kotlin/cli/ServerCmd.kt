@@ -1,7 +1,7 @@
 package cli
 
-import server.ServerApp
 import picocli.CommandLine
+import server.ServerApp
 import java.io.File
 import java.time.Duration
 import java.util.concurrent.Callable

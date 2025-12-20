@@ -8,7 +8,7 @@ import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.ssl.SslContext
 import logger
 import java.net.URI
-import java.util.UUID
+import java.util.*
 
 class ClientTunnelConnector(
     private val wsUri: URI,

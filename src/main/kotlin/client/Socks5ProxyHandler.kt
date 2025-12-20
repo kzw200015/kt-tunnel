@@ -4,8 +4,8 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.socksx.v5.*
 import isIgnorableNettyIoException
-import nettyIoExceptionSummary
 import logger
+import nettyIoExceptionSummary
 
 /**
  * SOCKS5 proxy handler that maps CONNECT requests to tunnels.

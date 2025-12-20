@@ -6,8 +6,8 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame
 import isIgnorableNettyIoException
-import nettyIoExceptionSummary
 import logger
+import nettyIoExceptionSummary
 
 /**
  * target TCP -> agent data WS 的数据转发 handler。

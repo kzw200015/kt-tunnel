@@ -12,8 +12,8 @@ import io.netty.handler.codec.http.HttpVersion
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolConfig
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler
 import isIgnorableNettyIoException
-import nettyIoExceptionSummary
 import logger
+import nettyIoExceptionSummary
 import server.AgentRegistry
 import server.TunnelRegistry
 
@@ -102,8 +102,10 @@ class WsPathRouterHandler(
     companion object {
         /** agent 控制面 endpoint。 */
         const val WS_AGENT_CONTROL = "/ws/agent/control"
+
         /** agent 数据面 endpoint。 */
         const val WS_AGENT_DATA = "/ws/agent/data"
+
         /** client 隧道 endpoint。 */
         const val WS_CLIENT_TUNNEL = "/ws/client/tunnel"
     }

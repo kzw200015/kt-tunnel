@@ -442,6 +442,7 @@ class TunnelRegistry(
     companion object {
         /** 绑定在 client/agentData channel 上的属性键：tunnelId。 */
         private val ATTR_TUNNEL_ID: AttributeKey<String> = AttributeKey.valueOf("tunnelId")
+
         /** 绑定在 client channel 上的属性键：agentId（用于 debug/清理扩展）。 */
         private val ATTR_AGENT_ID: AttributeKey<String> = AttributeKey.valueOf("agentId")
     }

@@ -11,9 +11,9 @@ import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import io.netty.handler.codec.http.websocketx.WebSocketFrame
 import isIgnorableNettyIoException
-import nettyIoExceptionSummary
-import logger
 import kotlinx.serialization.json.JsonObject
+import logger
+import nettyIoExceptionSummary
 import server.TunnelRegistry
 
 /**
@@ -29,6 +29,7 @@ class AgentDataHandler(private val tunnelRegistry: TunnelRegistry) : SimpleChann
 
     /** 是否已完成 bind。 */
     private var bound = false
+
     /** 当前 WS 连接所属的 tunnelId（bind 后确定）。 */
     private var tunnelId: String? = null
 

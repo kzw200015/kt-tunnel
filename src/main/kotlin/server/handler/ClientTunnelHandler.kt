@@ -11,9 +11,9 @@ import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import io.netty.handler.codec.http.websocketx.WebSocketFrame
 import isIgnorableNettyIoException
-import nettyIoExceptionSummary
-import logger
 import kotlinx.serialization.json.JsonObject
+import logger
+import nettyIoExceptionSummary
 import server.TunnelRegistry
 
 /**
@@ -29,6 +29,7 @@ class ClientTunnelHandler(private val tunnelRegistry: TunnelRegistry) : SimpleCh
 
     /** 是否已成功接收并处理 OPEN（第一帧）。 */
     private var opened = false
+
     /** 当前 WS 连接所属的 tunnelId（OPEN 后确定）。 */
     private var tunnelId: String? = null
 
