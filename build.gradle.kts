@@ -1,7 +1,11 @@
 plugins {
-    kotlin("jvm") version "2.2.21"
+    val kotlinVersion = "2.3.0"
+    kotlin("jvm") version kotlinVersion
+    kotlin("kapt") version kotlinVersion
+    kotlin("plugin.serialization") version kotlinVersion
     application
     id("com.gradleup.shadow") version "9.2.2"
+    id("org.graalvm.buildtools.native") version "0.11.3"
 }
 
 group = "com.github.kzw200015"
@@ -12,23 +16,20 @@ repositories {
 }
 
 dependencies {
-    val kotlinVersion = "2.2.21"
+    val kotlinVersion = "2.3.0"
     implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
     implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
-    val nettyVersion = "4.2.7.Final"
+    val nettyVersion = "4.2.9.Final"
     implementation("io.netty:netty-all:$nettyVersion")
     implementation("io.netty:netty-pkitesting:$nettyVersion")
     implementation("org.bouncycastle:bctls-jdk18on:1.83")
-    implementation("info.picocli:picocli:4.7.7")
-    val fastjsonVersion = "2.0.60"
-    implementation("com.alibaba.fastjson2:fastjson2:$fastjsonVersion")
-    implementation("com.alibaba.fastjson2:fastjson2-kotlin:$fastjsonVersion")
-    implementation("ch.qos.logback:logback-classic:1.3.16")
+    val picocliVersion = "4.7.7"
+    implementation("info.picocli:picocli:$picocliVersion")
+    kapt("info.picocli:picocli-codegen:$picocliVersion")
+    val kotlinxSerializationVersion = "1.9.0"
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+    implementation("ch.qos.logback:logback-classic:1.5.22")
     testImplementation(kotlin("test"))
-}
-
-kotlin {
-    jvmToolchain(8)
 }
 
 application {
@@ -43,6 +44,37 @@ tasks.shadowJar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     mergeServiceFiles()
 }
+
+graalvmNative {
+    agent {
+        enabled.set(true)
+        defaultMode.set("standard")
+
+        metadataCopy {
+            inputTaskNames.add("run")
+            outputDirectories.add("src/main/resources/META-INF/native-image/${project.group}/${project.name}/")
+            mergeWithExisting.set(true)
+        }
+    }
+    metadataRepository {
+        enabled.set(true)
+    }
+    binaries {
+        named("main") {
+            buildArgs.addAll(
+                "-H:+ReportExceptionStackTraces",
+                "--initialize-at-run-time=io.netty.handler.ssl.util.ThreadLocalInsecureRandom"
+            )
+        }
+    }
+    toolchainDetection = false
+}
+
+//kapt {
+//    arguments {
+//        arg("project", "${project.group}/${project.name}")
+//    }
+//}
 
 tasks.test {
     useJUnitPlatform()

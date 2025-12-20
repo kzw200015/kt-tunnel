@@ -1,9 +1,9 @@
 package server
 
-import com.alibaba.fastjson2.JSON
 import common.Messages
 import common.MsgTypes
 import common.Protocol
+import common.toJsonString
 import io.netty.channel.Channel
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import io.netty.util.AttributeKey
@@ -62,7 +62,7 @@ class TunnelRegistry(
         clientCh
             .writeAndFlush(
                 TextWebSocketFrame(
-                    JSON.toJSONString(Messages.ClientTunnelErr(MsgTypes.CLIENT_TUNNEL_ERR, tunnelId, code, message)),
+                    Messages.ClientTunnelErr(MsgTypes.CLIENT_TUNNEL_ERR, tunnelId, code, message).toJsonString(),
                 ),
             ).addListener { clientCh.close() }
     }
@@ -79,7 +79,7 @@ class TunnelRegistry(
         agentDataCh
             .writeAndFlush(
                 TextWebSocketFrame(
-                    JSON.toJSONString(Messages.AgentDataBindErr(MsgTypes.AGENT_DATA_BIND_ERR, tunnelId, code, message)),
+                    Messages.AgentDataBindErr(MsgTypes.AGENT_DATA_BIND_ERR, tunnelId, code, message).toJsonString(),
                 ),
             ).addListener { agentDataCh.close() }
     }
@@ -195,7 +195,7 @@ class TunnelRegistry(
 
         val create = Messages.TunnelCreate(MsgTypes.TUNNEL_CREATE, open.tunnelId, open.targetHost, open.targetPort)
         agentControl.channel
-            .writeAndFlush(TextWebSocketFrame(JSON.toJSONString(create)))
+            .writeAndFlush(TextWebSocketFrame(create.toJsonString()))
             .addListener { f ->
                 if (f.isSuccess) {
                     return@addListener
@@ -325,22 +325,18 @@ class TunnelRegistry(
 
         p.clientCh.writeAndFlush(
             TextWebSocketFrame(
-                JSON.toJSONString(
-                    Messages.ClientTunnelOk(
-                        MsgTypes.CLIENT_TUNNEL_OK,
-                        bind.tunnelId
-                    )
-                )
+                Messages.ClientTunnelOk(
+                    MsgTypes.CLIENT_TUNNEL_OK,
+                    bind.tunnelId
+                ).toJsonString()
             )
         )
         agentDataCh.writeAndFlush(
             TextWebSocketFrame(
-                JSON.toJSONString(
-                    Messages.AgentDataBindOk(
-                        MsgTypes.AGENT_DATA_BIND_OK,
-                        bind.tunnelId
-                    )
-                )
+                Messages.AgentDataBindOk(
+                    MsgTypes.AGENT_DATA_BIND_OK,
+                    bind.tunnelId
+                ).toJsonString()
             )
         )
     }

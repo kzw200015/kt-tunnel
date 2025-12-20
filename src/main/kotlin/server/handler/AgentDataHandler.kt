@@ -1,10 +1,9 @@
 package server.handler
 
-import com.alibaba.fastjson2.JSON
-import com.alibaba.fastjson2.JSONObject
 import common.Messages
 import common.MsgTypes
 import common.Protocol
+import common.parseJsonObject
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
@@ -14,6 +13,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketFrame
 import isIgnorableNettyIoException
 import nettyIoExceptionSummary
 import logger
+import kotlinx.serialization.json.JsonObject
 import server.TunnelRegistry
 
 /**
@@ -44,9 +44,9 @@ class AgentDataHandler(private val tunnelRegistry: TunnelRegistry) : SimpleChann
                 return
             }
 
-            val obj: JSONObject =
+            val obj: JsonObject =
                 try {
-                    JSON.parseObject(frame.text())
+                    frame.text().parseJsonObject()
                 } catch (_: Exception) {
                     ctx.close()
                     return

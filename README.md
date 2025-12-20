@@ -13,7 +13,7 @@
 - **Netty 4.2**：事件驱动 + pipeline 模型，适合构建高并发长连接服务端/客户端；内置 HTTP/WebSocket/SOCKS5 codec。
 - **WebSocket（ws/wss）**：统一承载控制面与数据面，部署时可复用 80/443，穿透网络环境更友好。
 - **picocli**：以子命令组织 `server/agent/client`，参数声明清晰、帮助信息自动生成。
-- **fastjson2**：控制面消息使用 JSON（TextWebSocketFrame）序列化/反序列化。
+- **kotlinx.serialization**：控制面消息使用 JSON（TextWebSocketFrame）序列化/反序列化。
 - **logback**：统一日志输出，便于排障。
 - **Gradle + Shadow 插件**：构建 `standalone` fat-jar（包含全部依赖），便于分发运行。
 

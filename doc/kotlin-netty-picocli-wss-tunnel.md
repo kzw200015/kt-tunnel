@@ -1,6 +1,6 @@
 # Kotlin + Netty + picocli：WS/WSS 三端内网穿透（无多路复用）实现说明
 
-> 本文档以当前仓库代码为准（Kotlin/JVM；Netty + picocli + fastjson2）。  
+> 本文档以当前仓库代码为准（Kotlin/JVM；Netty + picocli + kotlinx.serialization）。  
 > - 同时支持 `ws` 与 `wss`：server 同时提供 `--cert` 与 `--key` 时启用 TLS（wss）；否则为 ws。  
 > - **不做多路复用**：client 每接入一条本地 TCP 连接，就新建一条 **Client Tunnel WebSocket（WS/WSS）** 到 server。  
 > - agent 维持一条 **Agent Control WebSocket（WS/WSS）长连接**；每条隧道再新建一条 **Agent Data WebSocket（WS/WSS）**。  
@@ -382,9 +382,9 @@ client 需要：
 
 ## 9. JSON 编解码与类型安全
 
-当前实现使用 fastjson2：
-- 入站：`JSON.parseObject(text)` → `JSONObject`，先取 `type` 再按 type 提取字段
-- 出站：使用 Kotlin `data class` + `JSON.toJSONString(...)` 生成 JSON 文本
+当前实现使用 kotlinx.serialization：
+- 入站：`Json.parseToJsonElement(text).jsonObject`，先取 `type` 再按 type 提取字段
+- 出站：使用 Kotlin `@Serializable data class` + `Json.encodeToString(...)` 生成 JSON 文本
 
 必须校验：
 - `tunnelId`：UUID 格式

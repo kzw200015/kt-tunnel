@@ -1,5 +1,7 @@
 package common
 
+import kotlinx.serialization.Serializable
+
 /**
  * 控制面消息（TextWebSocketFrame JSON）结构。
  *
@@ -13,6 +15,7 @@ object Messages {
      * @param agentId agent 的逻辑标识（server 侧按 agentId 找到对应 control channel）
      * @param token 共享 token（MVP：静态密钥）
      */
+    @Serializable
     data class AgentRegister(val type: String, val agentId: String, val token: String)
 
     /**
@@ -20,6 +23,7 @@ object Messages {
      *
      * @param type 消息类型：`AGENT_REGISTER_OK`
      */
+    @Serializable
     data class AgentRegisterOk(val type: String)
 
     /**
@@ -29,6 +33,7 @@ object Messages {
      * @param code 错误码（例如 [Protocol.CODE_BAD_TOKEN]）
      * @param message 错误原因（例如 [Protocol.MSG_BAD_TOKEN]）
      */
+    @Serializable
     data class AgentRegisterErr(val type: String, val code: Int, val message: String)
 
     /**
@@ -39,6 +44,7 @@ object Messages {
      * @param targetHost agent 侧需要连接的 targetHost
      * @param targetPort agent 侧需要连接的 targetPort
      */
+    @Serializable
     data class TunnelCreate(val type: String, val tunnelId: String, val targetHost: String, val targetPort: Int)
 
     /**
@@ -51,6 +57,7 @@ object Messages {
      * @param code 错误码（例如 [Protocol.CODE_DIAL_FAILED]）
      * @param message 错误原因（例如 [Protocol.MSG_DIAL_FAILED]）
      */
+    @Serializable
     data class TunnelCreateErr(val type: String, val tunnelId: String, val code: Int, val message: String)
 
     /**
@@ -63,6 +70,7 @@ object Messages {
      * @param targetPort agent 侧要连接的目标端口
      * @param token 共享 token（MVP：静态密钥）
      */
+    @Serializable
     data class ClientTunnelOpen(
         val type: String,
         val tunnelId: String,
@@ -80,6 +88,7 @@ object Messages {
      * @param type 消息类型：`CLIENT_TUNNEL_OK`
      * @param tunnelId 隧道 ID
      */
+    @Serializable
     data class ClientTunnelOk(val type: String, val tunnelId: String)
 
     /**
@@ -90,6 +99,7 @@ object Messages {
      * @param code 错误码
      * @param message 错误原因
      */
+    @Serializable
     data class ClientTunnelErr(val type: String, val tunnelId: String, val code: Int, val message: String)
 
     /**
@@ -100,6 +110,7 @@ object Messages {
      * @param agentId agent ID（用于校验与 pending 的 agentId 是否一致）
      * @param token 共享 token（MVP：静态密钥）
      */
+    @Serializable
     data class AgentDataBind(val type: String, val tunnelId: String, val agentId: String, val token: String)
 
     /**
@@ -108,6 +119,7 @@ object Messages {
      * @param type 消息类型：`AGENT_DATA_BIND_OK`
      * @param tunnelId 隧道 ID
      */
+    @Serializable
     data class AgentDataBindOk(val type: String, val tunnelId: String)
 
     /**
@@ -118,5 +130,6 @@ object Messages {
      * @param code 错误码
      * @param message 错误原因
      */
+    @Serializable
     data class AgentDataBindErr(val type: String, val tunnelId: String, val code: Int, val message: String)
 }

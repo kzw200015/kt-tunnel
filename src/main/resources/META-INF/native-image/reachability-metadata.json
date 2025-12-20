@@ -1,0 +1,59 @@
+{
+  "reflection": [
+    {
+      "type": "agent.TargetToWsRelayHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "agent.AgentDataClientHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "agent.AgentControlClientHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "server.handler.AgentDataHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "server.handler.WsPathRouterHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "server.handler.ClientTunnelHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "server.handler.WsPathRouterHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "server.handler.AgentDataHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "client.ClientTunnelWsHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "client.LocalInboundRelayHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "client.Socks5ProxyHandler",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    }
+  ]
+}

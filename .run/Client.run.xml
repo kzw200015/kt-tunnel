@@ -2,7 +2,7 @@
   <configuration default="false" name="Client" type="JetRunConfigurationType">
     <option name="MAIN_CLASS_NAME" value="MainKt" />
     <module name="kt-tunnel.main" />
-    <option name="PROGRAM_PARAMETERS" value="client --server-host 127.0.0.1 --server-port 8000 --token TOKEN --agent-id A1 --forward 5202:127.0.0.1:5201 --socks5 5203 --insecure" />
+    <option name="PROGRAM_PARAMETERS" value="client --server wss://127.0.0.1:8000 --token TOKEN --agent-id A1 --forward 5202:127.0.0.1:5201 --socks5 5203 --insecure" />
     <shortenClasspath name="NONE" />
     <method v="2">
       <option name="Make" enabled="true" />

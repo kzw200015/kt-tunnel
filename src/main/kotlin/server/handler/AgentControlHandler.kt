@@ -1,16 +1,14 @@
 package server.handler
 
-import com.alibaba.fastjson2.JSON
-import com.alibaba.fastjson2.JSONObject
-import common.Messages
-import common.MsgTypes
-import common.Protocol
+import common.*
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import isIgnorableNettyIoException
-import nettyIoExceptionSummary
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import logger
+import nettyIoExceptionSummary
 import server.AgentRegistry
 import server.TunnelRegistry
 
@@ -38,9 +36,9 @@ class AgentControlHandler(
 
     /** 处理 agent control 的控制面消息（Text JSON）。 */
     override fun channelRead0(ctx: ChannelHandlerContext, frame: TextWebSocketFrame) {
-        val obj: JSONObject =
+        val obj: JsonObject =
             try {
-                JSON.parseObject(frame.text())
+                frame.text().parseJsonObject()
             } catch (_: Exception) {
                 ctx.close()
                 return
@@ -59,7 +57,7 @@ class AgentControlHandler(
      * - 注册 agentId -> channel
      * - 返回 REGISTER_OK 或 REGISTER_ERR
      */
-    private fun onRegister(ctx: ChannelHandlerContext, obj: JSONObject) {
+    private fun onRegister(ctx: ChannelHandlerContext, obj: JsonObject) {
         val agentId: String
         val providedToken: String
         try {
@@ -75,13 +73,11 @@ class AgentControlHandler(
             ctx
                 .writeAndFlush(
                     TextWebSocketFrame(
-                        JSON.toJSONString(
-                            Messages.AgentRegisterErr(
-                                MsgTypes.AGENT_REGISTER_ERR,
-                                Protocol.CODE_BAD_TOKEN,
-                                Protocol.MSG_BAD_TOKEN
-                            ),
-                        ),
+                        Messages.AgentRegisterErr(
+                            MsgTypes.AGENT_REGISTER_ERR,
+                            Protocol.CODE_BAD_TOKEN,
+                            Protocol.MSG_BAD_TOKEN
+                        ).toJsonString(),
                     ),
                 ).addListener { ctx.close() }
             return
@@ -90,7 +86,7 @@ class AgentControlHandler(
         agentRegistry.register(agentId, ctx.channel())
         registeredAgentId = agentId
         log.info("agent control registered: agentId={}, remote={}", agentId, ctx.channel().remoteAddress())
-        ctx.writeAndFlush(TextWebSocketFrame(JSON.toJSONString(Messages.AgentRegisterOk(MsgTypes.AGENT_REGISTER_OK))))
+        ctx.writeAndFlush(TextWebSocketFrame(Messages.AgentRegisterOk(MsgTypes.AGENT_REGISTER_OK).toJsonString()))
     }
 
     /**
@@ -98,14 +94,16 @@ class AgentControlHandler(
      *
      * server 侧会将该失败转交 [TunnelRegistry]，由 registry 向对应 client 返回 ERR 并关闭。
      */
-    private fun onCreateErr(obj: JSONObject) {
+    private fun onCreateErr(obj: JsonObject) {
         val tunnelId: String
         val code: Int
         val message: String
         try {
             tunnelId = Protocol.requireTunnelId(obj)
-            code = obj.getInteger("code") ?: Protocol.CODE_DIAL_FAILED
-            message = obj.getString("message")?.takeIf { it.isNotBlank() } ?: Protocol.MSG_DIAL_FAILED
+            code = (obj["code"] as? JsonPrimitive)?.content?.toIntOrNull() ?: Protocol.CODE_DIAL_FAILED
+            message =
+                (obj["message"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+                    ?: Protocol.MSG_DIAL_FAILED
         } catch (_: Exception) {
             return
         }

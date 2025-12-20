@@ -1,10 +1,10 @@
 package agent
 
-import com.alibaba.fastjson2.JSON
-import com.alibaba.fastjson2.JSONObject
 import common.Messages
 import common.MsgTypes
 import common.Protocol
+import common.parseJsonObject
+import common.toJsonString
 import io.netty.buffer.ByteBuf
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
@@ -15,6 +15,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler
 import isIgnorableNettyIoException
 import nettyIoExceptionSummary
 import logger
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Agent 端数据面 handler（client 侧）。
@@ -42,14 +43,12 @@ class AgentDataClientHandler(private val tunnelContext: TunnelContext) : SimpleC
             tunnelContext.dataWsCh = ctx.channel()
             ctx.writeAndFlush(
                 TextWebSocketFrame(
-                    JSON.toJSONString(
-                        Messages.AgentDataBind(
-                            MsgTypes.AGENT_DATA_BIND,
-                            tunnelContext.tunnelId,
-                            tunnelContext.agentId,
-                            tunnelContext.token
-                        )
-                    ),
+                    Messages.AgentDataBind(
+                        MsgTypes.AGENT_DATA_BIND,
+                        tunnelContext.tunnelId,
+                        tunnelContext.agentId,
+                        tunnelContext.token
+                    ).toJsonString(),
                 ),
             )
             val targetCh = tunnelContext.targetCh
@@ -68,9 +67,9 @@ class AgentDataClientHandler(private val tunnelContext: TunnelContext) : SimpleC
      */
     override fun channelRead0(ctx: ChannelHandlerContext, msg: Any) {
         if (msg is TextWebSocketFrame) {
-            val obj: JSONObject =
+            val obj: JsonObject =
                 try {
-                    JSON.parseObject(msg.text())
+                    msg.text().parseJsonObject()
                 } catch (_: Exception) {
                     return
                 }

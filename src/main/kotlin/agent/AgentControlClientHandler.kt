@@ -1,10 +1,10 @@
 package agent
 
-import com.alibaba.fastjson2.JSON
-import com.alibaba.fastjson2.JSONObject
 import common.Messages
 import common.MsgTypes
 import common.Protocol
+import common.parseJsonObject
+import common.toJsonString
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
@@ -12,6 +12,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler
 import isIgnorableNettyIoException
 import nettyIoExceptionSummary
 import logger
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Agent 端控制面 handler（client 侧）。
@@ -42,13 +43,11 @@ class AgentControlClientHandler(
             log.info("agent control ws connected: remote={}", ctx.channel().remoteAddress())
             ctx.writeAndFlush(
                 TextWebSocketFrame(
-                    JSON.toJSONString(
-                        Messages.AgentRegister(
-                            MsgTypes.AGENT_REGISTER,
-                            agentId,
-                            token
-                        )
-                    )
+                    Messages.AgentRegister(
+                        MsgTypes.AGENT_REGISTER,
+                        agentId,
+                        token
+                    ).toJsonString()
                 )
             )
         } else {
@@ -64,9 +63,9 @@ class AgentControlClientHandler(
      * - `TUNNEL_CREATE`
      */
     override fun channelRead0(ctx: ChannelHandlerContext, frame: TextWebSocketFrame) {
-        val obj: JSONObject =
+        val obj: JsonObject =
             try {
-                JSON.parseObject(frame.text())
+                frame.text().parseJsonObject()
             } catch (_: Exception) {
                 ctx.close()
                 return
@@ -85,7 +84,7 @@ class AgentControlClientHandler(
     }
 
     /** 处理 `TUNNEL_CREATE`：提取 tunnelId/target，并交由 [AgentTunnelManager] 创建隧道。 */
-    private fun onTunnelCreate(ctx: ChannelHandlerContext, obj: JSONObject) {
+    private fun onTunnelCreate(ctx: ChannelHandlerContext, obj: JsonObject) {
         val tunnelId: String
         val targetHost: String
         val targetPort: Int

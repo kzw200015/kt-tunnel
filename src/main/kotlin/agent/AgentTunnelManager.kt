@@ -1,9 +1,9 @@
 package agent
 
-import com.alibaba.fastjson2.JSON
 import common.Messages
 import common.MsgTypes
 import common.Protocol
+import common.toJsonString
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.Channel
 import io.netty.channel.ChannelFutureListener
@@ -76,14 +76,12 @@ class AgentTunnelManager(
                 )
                 controlCh.writeAndFlush(
                     TextWebSocketFrame(
-                        JSON.toJSONString(
-                            Messages.TunnelCreateErr(
-                                MsgTypes.TUNNEL_CREATE_ERR,
-                                tunnelId,
-                                Protocol.CODE_DIAL_FAILED,
-                                Protocol.MSG_DIAL_FAILED
-                            ),
-                        ),
+                        Messages.TunnelCreateErr(
+                            MsgTypes.TUNNEL_CREATE_ERR,
+                            tunnelId,
+                            Protocol.CODE_DIAL_FAILED,
+                            Protocol.MSG_DIAL_FAILED
+                        ).toJsonString(),
                     ),
                 )
                 return@ChannelFutureListener
@@ -115,14 +113,12 @@ class AgentTunnelManager(
                 ctx.closeBoth("data_ws_connect_failed")
                 controlCh.writeAndFlush(
                     TextWebSocketFrame(
-                        JSON.toJSONString(
-                            Messages.TunnelCreateErr(
-                                MsgTypes.TUNNEL_CREATE_ERR,
-                                tunnelId,
-                                Protocol.CODE_DIAL_FAILED,
-                                "DATA_WS_FAILED"
-                            ),
-                        ),
+                        Messages.TunnelCreateErr(
+                            MsgTypes.TUNNEL_CREATE_ERR,
+                            tunnelId,
+                            Protocol.CODE_DIAL_FAILED,
+                            "DATA_WS_FAILED"
+                        ).toJsonString(),
                     ),
                 )
             })
