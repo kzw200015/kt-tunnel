@@ -50,16 +50,6 @@ tasks.shadowJar {
 }
 
 graalvmNative {
-    agent {
-        enabled.set(true)
-        defaultMode.set("standard")
-
-        metadataCopy {
-            inputTaskNames.add("run")
-            outputDirectories.add("src/main/resources/META-INF/native-image/${project.group}/${project.name}/")
-            mergeWithExisting.set(true)
-        }
-    }
     metadataRepository {
         enabled.set(true)
     }
@@ -67,18 +57,12 @@ graalvmNative {
         named("main") {
             buildArgs.addAll(
                 "-H:+ReportExceptionStackTraces",
-                "--initialize-at-run-time=io.netty.handler.ssl.util.ThreadLocalInsecureRandom"
+                "--initialize-at-run-time=io.netty.handler.ssl.util.ThreadLocalInsecureRandom",
             )
         }
     }
     toolchainDetection = false
 }
-
-//kapt {
-//    arguments {
-//        arg("project", "${project.group}/${project.name}")
-//    }
-//}
 
 tasks.test {
     useJUnitPlatform()
