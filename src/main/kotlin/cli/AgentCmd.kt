@@ -17,13 +17,15 @@ import java.util.concurrent.Callable
  */
 @CommandLine.Command(name = "agent", mixinStandardHelpOptions = true)
 class AgentCmd : Callable<Int> {
-    /** server 的主机名/IP。 */
-    @CommandLine.Option(names = ["--server-host"], required = true)
-    lateinit var serverHost: String
-
-    /** server 的端口。 */
-    @CommandLine.Option(names = ["--server-port"], required = true)
-    var serverPort: Int = 0
+    /** server 的地址（ws:// 或 wss://）。 */
+    @CommandLine.Option(
+        names = ["--server"],
+        required = true,
+        converter = [ServerAddressConverter::class],
+        paramLabel = "ws[s]://HOST:PORT",
+        description = ["server url: ws://host:port or wss://host:port"],
+    )
+    lateinit var server: ServerAddress
 
     /** 与 server 约定的共享 token。 */
     @CommandLine.Option(names = ["--token"], required = true)
@@ -32,10 +34,6 @@ class AgentCmd : Callable<Int> {
     /** agent 的逻辑标识；为空时自动生成 UUID 并打印。 */
     @CommandLine.Option(names = ["--agent-id"], description = ["agent id (default: random uuid)"])
     var agentId: String? = null
-
-    /** 显式启用 TLS（wss）。 */
-    @CommandLine.Option(names = ["--tls"], description = ["enable TLS (wss)"])
-    var tls: Boolean = false
 
     /** 跳过 TLS 证书校验（仅开发环境使用）。 */
     @CommandLine.Option(names = ["--insecure"], description = ["skip TLS verification (dev only)"])
@@ -55,8 +53,8 @@ class AgentCmd : Callable<Int> {
         if (agentId.isNullOrBlank()) {
             println("agentId=$id")
         }
-        val useTls = tls || insecure || caFile != null
-        AgentApp(AgentApp.Config(serverHost, serverPort, token, id, useTls, insecure, caFile)).runUntilShutdown()
+        val useTls = server.tls
+        AgentApp(AgentApp.Config(server.host, server.port, token, id, useTls, insecure, caFile)).runUntilShutdown()
         return 0
     }
 }

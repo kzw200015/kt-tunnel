@@ -68,7 +68,7 @@
 不启用 TLS（ws）：
 ```bash
 java -jar build/libs/kt-tunnel-*-standalone.jar server \
-  --bind 0.0.0.0 --port 7000 \
+  --bind 0.0.0.0:8000 \
   --token TOKEN
 ```
 
@@ -76,31 +76,30 @@ java -jar build/libs/kt-tunnel-*-standalone.jar server \
 - 指定证书（PEM）：
 ```bash
 java -jar build/libs/kt-tunnel-*-standalone.jar server \
-  --bind 0.0.0.0 --port 7000 \
+  --bind 0.0.0.0:8000 \
   --token TOKEN \
   --cert server.crt --key server.key
 ```
 - 一键自签（便于本地/临时验证）：
 ```bash
 java -jar build/libs/kt-tunnel-*-standalone.jar server \
-  --bind 0.0.0.0 --port 7000 \
+  --bind 0.0.0.0:8000 \
   --token TOKEN \
-  --self-signed-tls SERVER_HOST
+  --self-signed-tls kttunnel
 ```
 
 ### 3) 启动 agent（内网）
 
 ```bash
 java -jar build/libs/kt-tunnel-*-standalone.jar agent \
-  --server-host SERVER_IP --server-port 7000 \
+  --server ws://127.0.0.1:8000 \
   --token TOKEN \
   --agent-id AGENT_ID
 ```
 
 不传 `--agent-id` 会自动生成 UUID 并在控制台打印 `agentId=...`。
 
-若 server 启用了 TLS（wss），agent 侧需额外开启 TLS（任选其一即启用 wss）：
-- `--tls`：使用系统信任链校验
+若 server 使用 TLS（wss），`--server` 需使用 `wss://`。证书校验可选：
 - `--ca ca.crt`：指定自定义 CA
 - `--insecure`：跳过证书校验（仅开发环境）
 
@@ -113,7 +112,7 @@ client 需要至少提供一个 `--forward` 或 `--socks5`（可多次传入，�
 示例：把本地 `9000` 转发到 agent 可访问的 `127.0.0.1:8080`：
 ```bash
 java -jar build/libs/kt-tunnel-*-standalone.jar client \
-  --server-host SERVER_IP --server-port 7000 \
+  --server ws://127.0.0.1:8000 \
   --token TOKEN --agent-id AGENT_ID \
   --forward 9000:127.0.0.1:8080
 ```
@@ -127,7 +126,7 @@ java -jar build/libs/kt-tunnel-*-standalone.jar client \
 启动本地 SOCKS5（示例：监听 `127.0.0.1:1080`）：
 ```bash
 java -jar build/libs/kt-tunnel-*-standalone.jar client \
-  --server-host SERVER_IP --server-port 7000 \
+  --server ws://127.0.0.1:8000 \
   --token TOKEN --agent-id AGENT_ID \
   --socks5 127.0.0.1:1080
 ```

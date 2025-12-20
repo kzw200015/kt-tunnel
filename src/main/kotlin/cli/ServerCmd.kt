@@ -16,13 +16,15 @@ import java.util.concurrent.Callable
  */
 @CommandLine.Command(name = "server", mixinStandardHelpOptions = true)
 class ServerCmd : Callable<Int> {
-    /** Server 监听地址，默认 `0.0.0.0`。 */
-    @CommandLine.Option(names = ["--bind"], defaultValue = "0.0.0.0", description = ["bind host"])
-    var bindHost: String = "0.0.0.0"
-
-    /** Server 监听端口。 */
-    @CommandLine.Option(names = ["--port"], required = true, description = ["bind port"])
-    var port: Int = 0
+    /** Server 监听地址（格式：`[HOST:]PORT`）。 */
+    @CommandLine.Option(
+        names = ["--bind"],
+        required = true,
+        converter = [BindAddressConverter::class],
+        paramLabel = "[HOST:]PORT",
+        description = ["bind address: [HOST:]PORT"],
+    )
+    lateinit var bind: BindAddress
 
     /** 共享 token（MVP：所有 client/agent 与 server 使用同一密钥）。 */
     @CommandLine.Option(names = ["--token"], required = true, description = ["shared token"])
@@ -68,8 +70,8 @@ class ServerCmd : Callable<Int> {
         }
         ServerApp(
             ServerApp.Config(
-                bindHost = bindHost,
-                port = port,
+                bindHost = bind.host,
+                port = bind.port,
                 token = token,
                 certFile = cert,
                 keyFile = key,

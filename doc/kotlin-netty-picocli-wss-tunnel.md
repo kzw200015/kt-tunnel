@@ -46,18 +46,17 @@
 
 ### 2.1 server
 ```bash
-java -jar build/libs/kt-tunnel-*-standalone.jar server   --bind 0.0.0.0 --port 7000   --token TOKEN   --cert server.crt --key server.key
+java -jar build/libs/kt-tunnel-*-standalone.jar server   --bind 0.0.0.0:8000   --token TOKEN   --cert server.crt --key server.key
 ```
 
 或使用自签证书快速启用 TLS（wss）：
 ```bash
-java -jar build/libs/kt-tunnel-*-standalone.jar server   --bind 0.0.0.0 --port 7000   --token TOKEN   --self-signed-tls SERVER_HOST
+java -jar build/libs/kt-tunnel-*-standalone.jar server   --bind 0.0.0.0:8000   --token TOKEN   --self-signed-tls kttunnel
 ```
 注意：自签证书默认不被信任；client/agent 需要使用 `--insecure`，或将 server 日志里打印的 `cert` 文件路径作为 `--ca` 传入。
 
 参数（与代码一致）：
-- `--bind` 监听地址（默认 0.0.0.0）
-- `--port` 监听端口
+- `--bind` 监听地址（格式 `[HOST:]PORT`，HOST 默认 0.0.0.0）
 - `--token` 共享密钥（MVP 简化鉴权）
 - `--cert/--key` PEM 格式证书与私钥（两者必须同时提供才启用 TLS/wss）
 - `--self-signed-tls [HOST]` 生成临时自签证书并启用 TLS/wss（默认 HOST=localhost；与 `--cert/--key` 互斥）
@@ -65,25 +64,24 @@ java -jar build/libs/kt-tunnel-*-standalone.jar server   --bind 0.0.0.0 --port 7
 
 ### 2.2 agent
 ```bash
-java -jar build/libs/kt-tunnel-*-standalone.jar agent   --server-host SERVER_IP --server-port 7000   --token TOKEN   --agent-id AGENT_ID
+java -jar build/libs/kt-tunnel-*-standalone.jar agent   --server ws://127.0.0.1:8000   --token TOKEN   --agent-id AGENT_ID
 ```
 
 参数（与代码一致）：
 - `--agent-id` 可选：不传则生成 UUID 并打印
 - TLS（wss）：
-  - `--tls` 显式启用 TLS（使用 JDK 默认信任链）
-  - `--ca ca.crt` 指定自定义 CA（同时也会启用 TLS）
-  - `--insecure` 跳过校验（同时也会启用 TLS；仅开发环境使用）
-  - 只要传了 `--tls` / `--ca` / `--insecure` 任一项，就会使用 `wss`
+  - `--ca ca.crt` 指定自定义 CA（wss 证书校验）
+  - `--insecure` 跳过校验（仅开发环境使用）
+  - 使用 `wss://` 即启用 TLS
 
 ### 2.3 client
 ```bash
-java -jar build/libs/kt-tunnel-*-standalone.jar client   --server-host SERVER_IP --server-port 7000   --token TOKEN   --agent-id AGENT_ID   --forward 9000:127.0.0.1:8080
+java -jar build/libs/kt-tunnel-*-standalone.jar client   --server ws://127.0.0.1:8000   --token TOKEN   --agent-id AGENT_ID   --forward 9000:127.0.0.1:8080
 ```
 
 参数（与代码一致）：
 - `--forward` / `--socks5` 至少提供一个（可多次传入，创建多个本地 listener）
-- TLS（wss）：同 `agent`（`--tls` / `--ca` / `--insecure` 任一项即启用）
+- TLS（wss）：同 `agent`（使用 `wss://` 即启用）
 
 `--forward` 支持两种格式（listenHost 可选，默认 0.0.0.0；支持多次传入参数）：
 - `<listenPort>:<targetHost>:<targetPort>` 例如 `9000:127.0.0.1:8080`

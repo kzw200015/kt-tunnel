@@ -18,13 +18,15 @@ import java.util.concurrent.Callable
  */
 @CommandLine.Command(name = "client", mixinStandardHelpOptions = true)
 class ClientCmd : Callable<Int> {
-    /** server 的主机名/IP。 */
-    @CommandLine.Option(names = ["--server-host"], required = true)
-    lateinit var serverHost: String
-
-    /** server 的端口。 */
-    @CommandLine.Option(names = ["--server-port"], required = true)
-    var serverPort: Int = 0
+    /** server 的地址（ws:// 或 wss://）。 */
+    @CommandLine.Option(
+        names = ["--server"],
+        required = true,
+        converter = [ServerAddressConverter::class],
+        paramLabel = "ws[s]://HOST:PORT",
+        description = ["server url: ws://host:port or wss://host:port"],
+    )
+    lateinit var server: ServerAddress
 
     /** 与 server 约定的共享 token。 */
     @CommandLine.Option(names = ["--token"], required = true)
@@ -33,10 +35,6 @@ class ClientCmd : Callable<Int> {
     /** 要连接的 agentId（server 侧按 agentId 选择控制连接下发建隧道指令）。 */
     @CommandLine.Option(names = ["--agent-id"], required = true)
     lateinit var agentId: String
-
-    /** 显式启用 TLS（wss）。 */
-    @CommandLine.Option(names = ["--tls"], description = ["enable TLS (wss)"])
-    var tls: Boolean = false
 
     /** 跳过 TLS 证书校验（仅开发环境使用）。 */
     @CommandLine.Option(names = ["--insecure"], description = ["skip TLS verification (dev only)"])
@@ -76,11 +74,11 @@ class ClientCmd : Callable<Int> {
      * @return 进程退出码（0 表示正常）
      */
     override fun call(): Int {
-        val useTls = tls || insecure || caFile != null
+        val useTls = server.tls
         ClientApp(
             ClientApp.Config(
-                serverHost,
-                serverPort,
+                server.host,
+                server.port,
                 token,
                 agentId,
                 useTls,
