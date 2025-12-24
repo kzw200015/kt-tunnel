@@ -19,6 +19,15 @@ object Messages {
     data class AgentRegister(val type: String, val agentId: String, val token: String)
 
     /**
+     * agent -> server：心跳（控制面）。
+     *
+     * @param type 消息类型：`AGENT_HEARTBEAT`
+     * @param tsEpochMs 客户端时间戳（毫秒，仅用于观测）
+     */
+    @Serializable
+    data class AgentHeartbeat(val type: String, val tsEpochMs: Long)
+
+    /**
      * server -> agent：注册成功响应（控制面）。
      *
      * @param type 消息类型：`AGENT_REGISTER_OK`

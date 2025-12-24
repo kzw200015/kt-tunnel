@@ -46,6 +46,7 @@ class AgentControlHandler(
 
         when (Protocol.requireType(obj)) {
             MsgTypes.AGENT_REGISTER -> onRegister(ctx, obj)
+            MsgTypes.AGENT_HEARTBEAT -> agentRegistry.touch(ctx.channel())
             MsgTypes.TUNNEL_CREATE_ERR -> onCreateErr(obj)
             else -> log.debug("ignore agent control msg type={}", Protocol.requireType(obj))
         }

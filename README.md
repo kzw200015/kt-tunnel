@@ -151,6 +151,7 @@ java -jar build/libs/kt-tunnel-*-standalone.jar client --help
 - **无多路复用**：每条本地连接会新建一条 client tunnel WS；每条隧道在 agent 侧也会新建一条 data WS + 一条 target TCP。
 - **鉴权为共享 token（MVP）**：建议配合 TLS（wss）使用，避免明文传输。
 - **TLS 自签证书**：默认不受信任；可用 `--insecure` 临时跳过校验，或把 CA 通过 `--ca` 传给 client/agent。
+- **长连接空闲**：agent control 会定时发送心跳，避免长时间无流量时被中间网络设备回收连接。
 
 ## 更多文档
 

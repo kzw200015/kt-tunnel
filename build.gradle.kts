@@ -16,7 +16,7 @@ repositories {
 }
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(8)
 }
 
 dependencies {
@@ -32,7 +32,7 @@ dependencies {
     kapt("info.picocli:picocli-codegen:$picocliVersion")
     val kotlinxSerializationVersion = "1.9.0"
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
-    implementation("ch.qos.logback:logback-classic:1.5.22")
+    implementation("ch.qos.logback:logback-classic:1.3.16")
     testImplementation(kotlin("test"))
 }
 

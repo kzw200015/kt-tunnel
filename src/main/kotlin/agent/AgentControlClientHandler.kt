@@ -6,9 +6,11 @@ import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler
 import isIgnorableNettyIoException
+import io.netty.util.concurrent.ScheduledFuture
 import kotlinx.serialization.json.JsonObject
 import logger
 import nettyIoExceptionSummary
+import java.util.concurrent.TimeUnit
 
 /**
  * Agent 端控制面 handler（client 侧）。
@@ -28,6 +30,7 @@ class AgentControlClientHandler(
     private val tunnelManager: AgentTunnelManager,
 ) : SimpleChannelInboundHandler<TextWebSocketFrame>() {
     private val log = logger<AgentControlClientHandler>()
+    private var heartbeatTask: ScheduledFuture<*>? = null
 
     /**
      * 处理 WebSocket client 协议事件。
@@ -46,6 +49,23 @@ class AgentControlClientHandler(
                     ).toJsonString()
                 )
             )
+            heartbeatTask?.cancel(false)
+            heartbeatTask =
+                ctx.executor().scheduleAtFixedRate(
+                    {
+                        ctx.writeAndFlush(
+                            TextWebSocketFrame(
+                                Messages.AgentHeartbeat(
+                                    MsgTypes.AGENT_HEARTBEAT,
+                                    System.currentTimeMillis(),
+                                ).toJsonString()
+                            )
+                        )
+                    },
+                    30,
+                    30,
+                    TimeUnit.SECONDS
+                )
         } else {
             ctx.fireUserEventTriggered(evt)
         }
@@ -98,6 +118,8 @@ class AgentControlClientHandler(
 
     /** 控制连接断开：记录一条 INFO 日志（重连策略不在本类中实现）。 */
     override fun channelInactive(ctx: ChannelHandlerContext) {
+        heartbeatTask?.cancel(false)
+        heartbeatTask = null
         log.info("agent control ws disconnected: remote={}", ctx.channel().remoteAddress())
     }
 

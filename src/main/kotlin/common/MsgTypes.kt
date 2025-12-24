@@ -9,6 +9,9 @@ object MsgTypes {
     /** agent -> server：注册。 */
     const val AGENT_REGISTER = "AGENT_REGISTER"
 
+    /** agent -> server：心跳（控制面）。 */
+    const val AGENT_HEARTBEAT = "AGENT_HEARTBEAT"
+
     /** server -> agent：注册成功。 */
     const val AGENT_REGISTER_OK = "AGENT_REGISTER_OK"
 

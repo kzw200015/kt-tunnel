@@ -51,7 +51,9 @@ class AgentRegistry {
      */
     fun touch(ch: Channel) {
         val agentId = ch.attr(ATTR_AGENT_ID).get() ?: return
-        online.computeIfPresent(agentId) { _, v -> AgentControl(v.channel, Instant.now()) }
+        online.computeIfPresent(agentId) { _, v ->
+            if (v.channel == ch) AgentControl(v.channel, Instant.now()) else v
+        }
     }
 
     /**
@@ -61,7 +63,7 @@ class AgentRegistry {
      */
     fun unregister(ch: Channel) {
         val agentId = ch.attr(ATTR_AGENT_ID).getAndSet(null) ?: return
-        online.remove(agentId)
+        online.computeIfPresent(agentId) { _, v -> if (v.channel == ch) null else v }
     }
 
     /**
